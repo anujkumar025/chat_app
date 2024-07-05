@@ -8,10 +8,12 @@ import os
 from Crypto.Cipher import AES
 
 
-HOST = '192.168.0.104' # local '192.168.0.104'  public '103.59.206.159' socket.gethostbyname(socket.gethostname()) - return your local ipv4 address
+# HOST = '192.168.0.104' # local '192.168.0.104'  public '103.59.206.159' socket.gethostbyname(socket.gethostname()) - return your local ipv4 address
+HOST = '127.0.0.1'
 PORT = 8081
 LISTENER_LIMIT = 5
 active_clients = [] # list of all currently connected users
+active_user = []
 
 # generate private key
 private_key = rsa.generate_private_key(
@@ -78,55 +80,100 @@ def return_session_key(client):
                 selected_obj = obj
     return selected_obj['session_key']
 
+
+def delete_user(client):
+    filtered_active_clients = []
+    for d in active_clients:
+        if d['client'] == client:
+            active_user.remove(d['username'])
+        else:
+            filtered_active_clients.append(d)
+    
+    return filtered_active_clients
+
     
 
 def listen_for_messages(client, username):
     while 1:
-        raw_data = client.recv(2048)
-        message = pickle.loads(raw_data)
-        if message['title'] == "handshake3":
-            encrypted_session_key = message['session_key']
-            session_key = private_key.decrypt(
-                encrypted_session_key,
-                padding.OAEP(
-                    mgf=padding.MGF1(algorithm=hashes.SHA256()),
-                    algorithm=hashes.SHA256(),
-                    label=None
+        try:
+            raw_data = client.recv(2048)
+            message = pickle.loads(raw_data)
+            if message['title'] == "handshake3":
+                encrypted_session_key = message['session_key']
+                session_key = private_key.decrypt(
+                    encrypted_session_key,
+                    padding.OAEP(
+                        mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                        algorithm=hashes.SHA256(),
+                        label=None
+                    )
                 )
-            )
-            for obj in active_clients:
-                if obj["client"] == client:
-                    obj.update({"session_key": session_key})
-            anouncement_data = {'title':'channel_secure',
-                        'username':'SERVER',
-                        'content':username + " joined the chat"}
-            send_messages_to_all(client, anouncement_data, session_key)
-            
-        elif message['title'] == 'channel_secure':
-            send_messages_to_all(client, message, return_session_key(client))
-        else:
-            print(f"the message send from client {username} is empty")  
+                for obj in active_clients:
+                    if obj["client"] == client:
+                        active_user.append(obj['username'])
+                        print(active_user)
+                        print(active_clients)
+                        obj.update({"session_key": session_key})
+                anouncement_data = {
+                    'title':'channel_secure',
+                    'username':'SERVER',
+                    'content':username + " joined the chat",
+                    'user_list':active_user
+                    }
+                send_messages_to_all(client, anouncement_data, session_key)
+                
+            elif message['title'] == 'channel_secure':
+                send_messages_to_all(client, message, return_session_key(client))
+            else:
+                print(f"the message send from client {username} is empty")  
+        except ConnectionResetError:
+            print("Client disconnected.")
+            client.close()
+            active_clients = delete_user(client)
+            break
+
+        except Exception as e:
+            print(f"An error occured : {e}")
+            client.close()
+            active_clients = delete_user(client)
+            break
 
 
 def client_handler(client):
+    active_clients = []
     #server will listen for client message that will contain the username
-    while 1:
-        initial_hello = client.recv(2048)
-        received_data = pickle.loads(initial_hello)
-        username = received_data['username']
-        if username != '':
-            temp_data = {'username':username,
-                         'client':client}
-            active_clients.append(temp_data)
-            data_to_send = {'title': "handshake2", 'public_key': public_key_pem}
-            updated = pickle.dumps(data_to_send)
-            client.sendall(updated)
+    while True:
+        try:
+            initial_hello = client.recv(2048)
+            received_data = pickle.loads(initial_hello)
+            username = received_data['username']
+            if username != '':
+                temp_data = {'username':username,
+                            'client':client}
+                active_clients.append(temp_data)
+                data_to_send = {'title': "handshake2", 'public_key': public_key_pem}
+                # print(data_to_send)
+                updated = pickle.dumps(data_to_send)
+                client.sendall(updated)
+                break
+
+            else:
+                print("client username is empty")
+                
+            threading.Thread(target=listen_for_messages, args=(client, username)).start()
+
+        except ConnectionResetError:
+            print("Client disconnected.")
+            client.close()
+            active_clients = delete_user(client)
             break
 
-        else:
-            print("client username is empty")
+        except Exception as e:
+            print(f"An error occured : {e}")
+            client.close()
+            active_clients = delete_user(client)
+            break
 
-    threading.Thread(target=listen_for_messages, args=(client, username)).start()
 
 
 def main():
@@ -147,7 +194,7 @@ def main():
     while(1):
         client, address = server.accept()
         print(f"successfully connected to client { address[0]} {address[1]}")
-        
+
         threading.Thread(target=client_handler, args=(client, )).start()
 
 

@@ -15,9 +15,11 @@ SALT = random.randbytes(64)
 password = "xcvksud"
 SESSION_KEY = PBKDF2(password, SALT, dkLen=32)
 # cipher = AES.new(SESSION_KEY, AES.MODE_CBC)
+message_list = [] 
+member_list = []
 
 
-HOST = '192.168.0.104'
+HOST = '127.0.0.1'
 # HOST = '127.0.0.1'
 PORT = 8081
 
@@ -29,6 +31,9 @@ def decrypt_cipher_text(encrypted_message):
     cipher = AES.new(SESSION_KEY, AES.MODE_CBC, iv)
     decrypted_serialized_object = unpad(cipher.decrypt(ciphertext), AES.block_size)
     message = pickle.loads(decrypted_serialized_object)
+    if len(message["user_list"]) > len(member_list):
+        member_list = message["user_list"]
+    message_list.append((member_list.index(message['username']), message['content']))
     print(f"[{message['username']}]: {message['content']}") 
 
 
@@ -75,6 +80,7 @@ def encrypt_data(data):
 def send_message_to_server(client, username):
     while 1:
         message = input()
+        message_list.append((0, message))
         if message != '':
             data_object = {'title':'channel_secure',
                            'username':username,
@@ -102,9 +108,10 @@ def communicate_to_server(client):
     send_message_to_server(client, username)
 
 
-def main():
+def client_main():
     # root.mainloop()
 
+    print("yoyo")
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
     try:
@@ -115,5 +122,4 @@ def main():
 
     communicate_to_server(client)
 
-if __name__ == '__main__' :
-    main()
+    return [member_list, message_list]
