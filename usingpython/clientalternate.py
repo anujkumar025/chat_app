@@ -8,8 +8,6 @@ from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.primitives.asymmetric import padding
 import pickle
 import os
-from frontend import App
-import time
 
 SALT = os.urandom(64)
 # print(SALT)
@@ -20,16 +18,10 @@ PUBLIC_KEY_SERVER = None
 # cipher = AES.new(SESSION_KEY, AES.MODE_CBC)
 message_list = [] 
 member_list = []
-frontend_obj = None
 
 
 HOST = '127.0.0.1'
 PORT = 8081
-
-
-def frontend_chatting_page():
-    frontend_obj.page2_selector(member_list, message_list)
-    # frontend_obj.mainloop()
 
 
 def decrypt_cipher_text(encrypted_message):
@@ -48,12 +40,11 @@ def decrypt_cipher_text(encrypted_message):
     else:
         if message['username'] == "SERVER":
             member_list = message["user_list"]
-
+        
         else:
             message_list.append((message['username'], message['content']))
             
-        # print(f"[{message['username']}]: {message['content']}") 
-    frontend_chatting_page()
+        print(f"[{message['username']}]: {message['content']}") 
 
 
 def listen_for_messages_from_server(client):
@@ -115,8 +106,7 @@ def send_message_to_server(client, username):
 
 
 def communicate_to_server(client):
-    # username = input("Enter username : ")
-    username = frontend_obj.get_username()
+    username = input("Enter username : ")
     if username != '':
         initial_hello = {"username": username,
                          "message": "hello"}
@@ -130,15 +120,9 @@ def communicate_to_server(client):
     send_message_to_server(client, username)
 
 
-def frontend_thread():
-    global frontend_obj
-    frontend_obj = App()
-    # print(frontend_obj)
-    frontend_obj.page1_selector()
-    frontend_obj.mainloop()
-
 def main():
 
+    print("yoyo")
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
     try:
@@ -147,9 +131,6 @@ def main():
     except:
         print(f"Unable to connect to server {HOST} {PORT}")
 
-
-    thread = threading.Thread(target=frontend_thread, args=()).start()
-    time.sleep(1)
     communicate_to_server(client)
 
 
