@@ -9,11 +9,12 @@ from cryptography.hazmat.primitives.asymmetric import padding
 import pickle
 import os
 
-SALT = random.randbytes(64)
+SALT = os.urandom(64)
 # print(SALT)
 # SALT = b'x\xd9\x8b\xefH\x95\x04-\xc5\xe2\xc5\x02Q\xa2\x07L%\xde\xfbk}\xf3\xae\x9f\xf3\x10\xa0\xf1\x9e\x1f^\xd1\xb6\xeb\xbf\xf0h\x98\xcd\xb6\xc7\x0b\xf9\xa8(\x1c?\xe6\xf5\x0b\x00b\x80\xee"\x90\xa77\xb0\x0b+W\xb1\xc4'
 password = "xcvksud"
 SESSION_KEY = PBKDF2(password, SALT, dkLen=32)
+PUBLIC_KEY_SERVER = None
 # cipher = AES.new(SESSION_KEY, AES.MODE_CBC)
 message_list = [] 
 member_list = []
@@ -23,7 +24,9 @@ HOST = '127.0.0.1'
 # HOST = '127.0.0.1'
 PORT = 8081
 
+
 def decrypt_cipher_text(encrypted_message):
+    global member_list, message_list
     iv = encrypted_message['iv']
     ciphertext = encrypted_message['ciphertext']
 
@@ -31,10 +34,18 @@ def decrypt_cipher_text(encrypted_message):
     cipher = AES.new(SESSION_KEY, AES.MODE_CBC, iv)
     decrypted_serialized_object = unpad(cipher.decrypt(ciphertext), AES.block_size)
     message = pickle.loads(decrypted_serialized_object)
-    if len(message["user_list"]) > len(member_list):
-        member_list = message["user_list"]
-    message_list.append((member_list.index(message['username']), message['content']))
-    print(f"[{message['username']}]: {message['content']}") 
+    if message['title'] == "essential_data":
+        member_list = message['user_list']
+        print(member_list)
+    
+    else:
+        if message['username'] == "SERVER":
+            member_list = message["user_list"]
+        
+        else:
+            message_list.append((message['username'], message['content']))
+            
+        print(f"[{message['username']}]: {message['content']}") 
 
 
 def listen_for_messages_from_server(client):
@@ -43,8 +54,8 @@ def listen_for_messages_from_server(client):
         message = pickle.loads(raw_data) 
         if message['title'] == "handshake2":
             public_key_pem = message['public_key']
-            public_key = serialization.load_pem_public_key(public_key_pem)
-            encrypted_session_key = public_key.encrypt(
+            PUBLIC_KEY_SERVER = serialization.load_pem_public_key(public_key_pem)
+            encrypted_session_key = PUBLIC_KEY_SERVER.encrypt(
                 SESSION_KEY,
                 padding.OAEP(
                     mgf=padding.MGF1(algorithm=hashes.SHA256()),
@@ -56,8 +67,10 @@ def listen_for_messages_from_server(client):
                             'session_key': encrypted_session_key}
             serialized_data = pickle.dumps(data_to_send)
             client.sendall(serialized_data)
+        elif message['title'] == "essential_data":
+            decrypt_cipher_text(message)
         elif message['title'] == 'channel_secure':
-           decrypt_cipher_text(message)
+            decrypt_cipher_text(message)
         else:
             print("message recieved from client is empty")
 
@@ -80,7 +93,7 @@ def encrypt_data(data):
 def send_message_to_server(client, username):
     while 1:
         message = input()
-        message_list.append((0, message))
+        message_list.append((username, message))
         if message != '':
             data_object = {'title':'channel_secure',
                            'username':username,
@@ -108,7 +121,7 @@ def communicate_to_server(client):
     send_message_to_server(client, username)
 
 
-def client_main():
+def main():
     # root.mainloop()
 
     print("yoyo")
@@ -122,4 +135,6 @@ def client_main():
 
     communicate_to_server(client)
 
-    return [member_list, message_list]
+
+if __name__ == "__main__":
+    main()

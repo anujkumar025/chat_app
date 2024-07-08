@@ -40,22 +40,33 @@ def decrypt_cipher_text(encrypted_message, SESSION_KEY):
     return message
 
 
-# def send_message_to_client(client, raw_data):
-#     client.sendall(raw_data)
-
-
 def send_messages_to_all(client, raw_data, SESSION_KEY):
+    global active_clients, active_user
     decrypted_data = None
     if 'iv' in raw_data.keys():
         decrypted_data = decrypt_cipher_text(raw_data, SESSION_KEY)
     else:
         decrypted_data = raw_data
+    
     for user in active_clients:
         if client != user['client']:
             encrypted_data = encrypt_data(decrypted_data, user['session_key'])
-            # send_message_to_client(user['client'], encrypted_data)
             user['client'].sendall(encrypted_data)
 
+
+def handle_new_user(client, SESSION_KEY):
+    global active_clients, active_user
+    data_to_send = {
+        "title": "essential_data",
+        "user_list": active_user
+    }
+    serialized_object = pickle.dumps(data_to_send)
+    iv = os.urandom(16)  # AES block size is 16 bytes
+    cipher = AES.new(SESSION_KEY, AES.MODE_CBC, iv)
+    ciphertext = cipher.encrypt(pad(serialized_object, AES.block_size))
+    encrypted_message = {'title':'essential_data','iv': iv, 'ciphertext': ciphertext}
+    serialized_encrypted_message = pickle.dumps(encrypted_message)
+    client.sendall(serialized_encrypted_message)
 
 
 def encrypt_data(data, SESSION_KEY):
@@ -74,6 +85,7 @@ def encrypt_data(data, SESSION_KEY):
 
 
 def return_session_key(client):
+    global active_clients, active_user
     selected_obj = None
     for obj in active_clients:
             if obj["client"] == client:
@@ -82,6 +94,7 @@ def return_session_key(client):
 
 
 def delete_user(client):
+    global active_clients, active_user
     filtered_active_clients = []
     for d in active_clients:
         if d['client'] == client:
@@ -94,10 +107,12 @@ def delete_user(client):
     
 
 def listen_for_messages(client, username):
+    global active_clients, active_user
     while 1:
         try:
             raw_data = client.recv(2048)
             message = pickle.loads(raw_data)
+            # print(message)
             if message['title'] == "handshake3":
                 encrypted_session_key = message['session_key']
                 session_key = private_key.decrypt(
@@ -112,7 +127,7 @@ def listen_for_messages(client, username):
                     if obj["client"] == client:
                         active_user.append(obj['username'])
                         print(active_user)
-                        print(active_clients)
+                        # print(active_clients)
                         obj.update({"session_key": session_key})
                 anouncement_data = {
                     'title':'channel_secure',
@@ -121,13 +136,14 @@ def listen_for_messages(client, username):
                     'user_list':active_user
                     }
                 send_messages_to_all(client, anouncement_data, session_key)
+                handle_new_user(client, session_key)
                 
             elif message['title'] == 'channel_secure':
                 send_messages_to_all(client, message, return_session_key(client))
             else:
                 print(f"the message send from client {username} is empty")  
         except ConnectionResetError:
-            print("Client disconnected.")
+            print(f"Client {username} disconnected unexpectedly.")
             client.close()
             active_clients = delete_user(client)
             break
@@ -140,7 +156,7 @@ def listen_for_messages(client, username):
 
 
 def client_handler(client):
-    active_clients = []
+    global active_clients, active_user
     #server will listen for client message that will contain the username
     while True:
         try:
@@ -151,19 +167,19 @@ def client_handler(client):
                 temp_data = {'username':username,
                             'client':client}
                 active_clients.append(temp_data)
+                # print(active_clients)
                 data_to_send = {'title': "handshake2", 'public_key': public_key_pem}
-                # print(data_to_send)
                 updated = pickle.dumps(data_to_send)
                 client.sendall(updated)
+                threading.Thread(target=listen_for_messages, args=(client, username)).start()
                 break
-
             else:
                 print("client username is empty")
                 
             threading.Thread(target=listen_for_messages, args=(client, username)).start()
 
         except ConnectionResetError:
-            print("Client disconnected.")
+            print(f"Client {username} disconnected unexpectedly.")
             client.close()
             active_clients = delete_user(client)
             break

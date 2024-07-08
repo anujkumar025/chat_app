@@ -9,8 +9,8 @@ from data import Constdata
 # OTHER_TEXT_COLOR = '#2c2f3c'
 # MY_TEXT_COLOR = '#4183d7'
 # BUTTON_COLOR = '#26c281'
-# MEMBER_LIST = ['anuj', 'kumar', 'bnuj', 'cnuj', 'dnuj']
-# MESSAGE_LIST = [[0, "Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum."], [1, "Hi"], [2, "yo"], [3, "2Hello"], [4, "Hi"], [3, "yo"], [0, "3Hello"], [3, "Hi"], [2, "yo"], [0, "4Hello"], [2, "Hi"], [4, "yo"], [0, "5Hello"], [3, "Hi"], [2, "yo"]]
+MEMBER_LIST = ['anuj', 'kumar', 'bnuj', 'cnuj', 'dnuj']
+MESSAGE_LIST = [[0, "Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum."], [1, "Hi"], [2, "yo"], [3, "2Hello"], [4, "Hi"], [3, "yo"], [0, "3Hello"], [3, "Hi"], [2, "yo"], [0, "4Hello"], [2, "Hi"], [4, "yo"], [0, "5Hello"], [3, "Hi"], [2, "yo"]]
 
 
 class App(customtkinter.CTk):
@@ -45,7 +45,8 @@ class App(customtkinter.CTk):
         member_title.pack(padx=10, pady=10)
 
         # username_list = ["random", "names"]
-        for username in self.MEMBER_LIST:
+        # for username in self.MEMBER_LIST:
+        for username in MEMBER_LIST:
             each_member_container = customtkinter.CTkFrame(member_container, fg_color=Constdata["BACKGROUND_COLOR"], corner_radius=5)
             each_member_container.pack(padx=10, pady=5, fill=tkinter.X)
 
@@ -69,14 +70,16 @@ class App(customtkinter.CTk):
         # chat_container.grid_columnconfigure((0, 1, 2), weight=1)
 
         MAX_WIDTH = 400
-        for message in self.MESSAGE_LIST:
+        # for message in self.MESSAGE_LIST:
+        for message in MESSAGE_LIST:
 
             each_message_container = customtkinter.CTkFrame(chat_container, fg_color=Constdata["OTHER_TEXT_COLOR"] if message[0] else Constdata["MY_TEXT_COLOR"], corner_radius=8, width=MAX_WIDTH)
             # each_message_container.grid(column=0 if message[0] else 1, columnspan = 2, sticky="ew", pady=5, padx=5)
 
             each_message_container.pack(padx=10, pady=5, anchor="w" if message[0] else "e")
 
-            message_text = customtkinter.CTkLabel(each_message_container, text=f'[{self.MEMBER_LIST[message[0]]}]: {message[1]}', font=("Roboto", 12), wraplength=MAX_WIDTH-10)
+            # message_text = customtkinter.CTkLabel(each_message_container, text=f'[{self.MEMBER_LIST[message[0]]}]: {message[1]}', font=("Roboto", 12), wraplength=MAX_WIDTH-10)
+            message_text = customtkinter.CTkLabel(each_message_container, text=f'[{MEMBER_LIST[message[0]]}]: {message[1]}', font=("Roboto", 12), wraplength=MAX_WIDTH-10)
             message_text.pack(padx=13, pady=5, anchor="e", side="top")
                 
 
@@ -110,7 +113,8 @@ class App(customtkinter.CTk):
 
         
 
-    def __init__(self, MEMBER_LIST, MESSAGE_LIST):
+    # def __init__(self, MEMBER_LIST, MESSAGE_LIST):
+    def __init__(self):
         customtkinter.set_appearance_mode("System")
         customtkinter.set_default_color_theme("dark-blue")
         super().__init__()
@@ -131,3 +135,7 @@ class App(customtkinter.CTk):
         # self.login_page()
         self.page2_selector()
         self.chatting_page()
+
+
+a = App()
+a.mainloop()
