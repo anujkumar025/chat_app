@@ -17,6 +17,7 @@ class App(customtkinter.CTk):
 
     frames = {"page1": None, "page2": None}
     username = None
+    new_message = None
 
     def page1_selector(self):
         App.frames["page2"].pack_forget()
@@ -50,6 +51,11 @@ class App(customtkinter.CTk):
             time.sleep(1)
         # print(App.username)
         return App.username
+    
+    def get_new_message(self):
+        while App.new_message is None:
+            time.sleep(1)
+        return App.new_message
 
     
     def chatting_page(self, MEMBER_LIST, MESSAGE_LIST):
@@ -91,7 +97,7 @@ class App(customtkinter.CTk):
 
             each_message_container.pack(padx=10, pady=5, anchor="w" if message[0] else "e")
 
-            message_text = customtkinter.CTkLabel(each_message_container, text=f'[{MEMBER_LIST[message[0]]}]: {message[1]}', font=("Roboto", 12), wraplength=MAX_WIDTH-10)
+            message_text = customtkinter.CTkLabel(each_message_container, text=f'[{message[0]}]: {message[1]}', font=("Roboto", 12), wraplength=MAX_WIDTH-10)
             message_text.pack(padx=13, pady=5, anchor="e", side="top")
                 
 
@@ -110,7 +116,11 @@ class App(customtkinter.CTk):
         logo = Image.open("E:/placement/internship SAG/project/usingpython/sent.png")
         send_logo = customtkinter.CTkImage(dark_image=logo, light_image=logo, size=(20,20))
 
-        send_button = customtkinter.CTkButton(input_container, text="", image=send_logo, width=25, fg_color=Constdata["MY_TEXT_COLOR"])
+        def handle_send_button():
+            App.new_message = input_box.get()
+            time.sleep(1)
+
+        send_button = customtkinter.CTkButton(input_container, text="", image=send_logo, width=25, fg_color=Constdata["MY_TEXT_COLOR"], command=handle_send_button)
         send_button.grid(padx=(0, 10), pady=(5, 5), column=14, row=0, columnspan=1)
 
         
@@ -122,7 +132,6 @@ class App(customtkinter.CTk):
         App.frames['page2'].grid_rowconfigure(0, weight=1)
         App.frames['page2'].grid_rowconfigure(1, weight=30)
         App.frames['page2'].grid_rowconfigure(2, weight=2)
-
         
 
     def __init__(self):
@@ -143,12 +152,4 @@ class App(customtkinter.CTk):
         App.frames['page2'].pack(anchor=tkinter.CENTER, fill=tkinter.BOTH, expand=True, padx=0, pady=0)
         
         App.username = None
-        # self.page1_selector()
-        # self.login_page()
-        # self.page2_selector()
-        # self.chatting_page()
-
-
-# a = App()
-# a.page2_selector()
-# a.mainloop()
+        App.new_message = None

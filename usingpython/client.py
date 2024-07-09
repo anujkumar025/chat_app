@@ -12,27 +12,63 @@ from frontend import App
 import time
 
 SALT = os.urandom(64)
-# print(SALT)
-# SALT = b'x\xd9\x8b\xefH\x95\x04-\xc5\xe2\xc5\x02Q\xa2\x07L%\xde\xfbk}\xf3\xae\x9f\xf3\x10\xa0\xf1\x9e\x1f^\xd1\xb6\xeb\xbf\xf0h\x98\xcd\xb6\xc7\x0b\xf9\xa8(\x1c?\xe6\xf5\x0b\x00b\x80\xee"\x90\xa77\xb0\x0b+W\xb1\xc4'
 password = "xcvksud"
 SESSION_KEY = PBKDF2(password, SALT, dkLen=32)
 PUBLIC_KEY_SERVER = None
-# cipher = AES.new(SESSION_KEY, AES.MODE_CBC)
 message_list = [] 
+USERNAME = None
 member_list = []
 frontend_obj = None
+new_message_flag = None  # Event to signal new message
 
 
 HOST = '127.0.0.1'
 PORT = 8081
 
+def send_message_to_server(client, message):
+    global USERNAME, message_list
+    # print(USERNAME)
+    # print(message_list)
+    if message != '':
+        # message_list.append((USERNAME, message))
+        new_message_flag.set()
+        # print("send_messages_to server :")
+        print(message_list)
+        data_object = {'title':'channel_secure',
+                       'username':USERNAME,
+                       'content':message}
+        serialized_encrypted_data = encrypt_data(data_object)
+        client.sendall(serialized_encrypted_data)
+    else:
+        print("Empty message")
+        exit(0)
 
-def frontend_chatting_page():
+def update_frontend_chatting_page():
+    global frontend_obj, member_list, message_list
     frontend_obj.page2_selector(member_list, message_list)
-    # frontend_obj.mainloop()
 
 
-def decrypt_cipher_text(encrypted_message):
+def monitor_message_list():
+    while True:
+        new_message_flag.wait()  # Wait until a new message is detected
+        update_frontend_chatting_page()
+        new_message_flag.clear()
+
+
+def frontend_chatting_page(client):
+    global member_list, message_list, USERNAME
+    new_message_flag.set()
+    last_message = None
+    while True:
+        temp_data = frontend_obj.get_new_message()
+        if temp_data and temp_data != last_message:
+            last_message = temp_data
+            message_list.append((USERNAME, temp_data))
+            update_frontend_chatting_page()
+            send_message_to_server(client, temp_data)
+
+
+def decrypt_cipher_text(client, encrypted_message):
     global member_list, message_list
     iv = encrypted_message['iv']
     ciphertext = encrypted_message['ciphertext']
@@ -43,17 +79,28 @@ def decrypt_cipher_text(encrypted_message):
     message = pickle.loads(decrypted_serialized_object)
     if message['title'] == "essential_data":
         member_list = message['user_list']
+        # update_frontend_chatting_page()
+        time.sleep(0.5)
+        new_message_flag.set()
+        print("title : essential_data")
         print(member_list)
     
     else:
         if message['username'] == "SERVER":
             member_list = message["user_list"]
+            print("username : SERVER")
+            print(member_list)
+            new_message_flag.set()
 
         else:
             message_list.append((message['username'], message['content']))
+            # update_frontend_chatting_page()
+            new_message_flag.set()
+            print(f"message list : {message_list}")
+            print("decrypt cypher text :")
+            print(message_list)
             
-        # print(f"[{message['username']}]: {message['content']}") 
-    frontend_chatting_page()
+    # new_message_flag.set()
 
 
 def listen_for_messages_from_server(client):
@@ -76,9 +123,9 @@ def listen_for_messages_from_server(client):
             serialized_data = pickle.dumps(data_to_send)
             client.sendall(serialized_data)
         elif message['title'] == "essential_data":
-            decrypt_cipher_text(message)
+            decrypt_cipher_text(client, message)
         elif message['title'] == 'channel_secure':
-            decrypt_cipher_text(message)
+            decrypt_cipher_text(client, message)
         else:
             print("message recieved from client is empty")
 
@@ -98,25 +145,11 @@ def encrypt_data(data):
     return serialized_encrypted_message
 
 
-def send_message_to_server(client, username):
-    while 1:
-        message = input()
-        message_list.append((username, message))
-        if message != '':
-            data_object = {'title':'channel_secure',
-                           'username':username,
-                        'content':message}
-            serialized_encrypted_data = encrypt_data(data_object)
-            client.sendall(serialized_encrypted_data)
-        else:
-            print("Empty message")
-            exit(0)
-
-
 
 def communicate_to_server(client):
-    # username = input("Enter username : ")
+    global new_message_flag, USERNAME
     username = frontend_obj.get_username()
+    USERNAME = username
     if username != '':
         initial_hello = {"username": username,
                          "message": "hello"}
@@ -126,19 +159,19 @@ def communicate_to_server(client):
         print("username cannot be empty")
         exit(0)
     
+    new_message_flag = threading.Event()
+    threading.Thread(target=monitor_message_list, daemon=True).start()
     threading.Thread(target=listen_for_messages_from_server, args=(client, )).start()
-    send_message_to_server(client, username)
+    frontend_chatting_page(client)
 
 
 def frontend_thread():
     global frontend_obj
     frontend_obj = App()
-    # print(frontend_obj)
     frontend_obj.page1_selector()
     frontend_obj.mainloop()
 
 def main():
-
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
     try:
@@ -148,7 +181,7 @@ def main():
         print(f"Unable to connect to server {HOST} {PORT}")
 
 
-    thread = threading.Thread(target=frontend_thread, args=()).start()
+    threading.Thread(target=frontend_thread, args=()).start()
     time.sleep(1)
     communicate_to_server(client)
 

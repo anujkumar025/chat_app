@@ -60,13 +60,12 @@ def handle_new_user(client, SESSION_KEY):
         "title": "essential_data",
         "user_list": active_user
     }
-    serialized_object = pickle.dumps(data_to_send)
-    iv = os.urandom(16)  # AES block size is 16 bytes
-    cipher = AES.new(SESSION_KEY, AES.MODE_CBC, iv)
-    ciphertext = cipher.encrypt(pad(serialized_object, AES.block_size))
-    encrypted_message = {'title':'essential_data','iv': iv, 'ciphertext': ciphertext}
-    serialized_encrypted_message = pickle.dumps(encrypted_message)
-    client.sendall(serialized_encrypted_message)
+    for user in active_clients:
+        encrypted_data = encrypt_data(data_to_send, user['session_key'])
+        temp_data = pickle.loads(encrypted_data)
+        temp_data['title'] = "essential_data"
+        encrypted_data = pickle.dumps(temp_data)
+        user['client'].sendall(encrypted_data)
 
 
 def encrypt_data(data, SESSION_KEY):
