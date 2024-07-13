@@ -8,12 +8,11 @@ import os
 from Crypto.Cipher import AES
 
 
-# HOST = '192.168.0.104' # local '192.168.0.104'  public '103.59.206.159' socket.gethostbyname(socket.gethostname()) - return your local ipv4 address
 HOST = '127.0.0.1'
 PORT = 8081
 LISTENER_LIMIT = 5
 active_clients = [] # list of all currently connected users
-active_user = []
+active_user = [] # list of usernames of currently connected users
 
 # generate private key
 private_key = rsa.generate_private_key(
@@ -125,7 +124,7 @@ def listen_for_messages(client, username):
                 for obj in active_clients:
                     if obj["client"] == client:
                         active_user.append(obj['username'])
-                        print(active_user)
+                        # print(active_user)
                         # print(active_clients)
                         obj.update({"session_key": session_key})
                 anouncement_data = {
