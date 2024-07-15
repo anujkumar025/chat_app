@@ -29,11 +29,7 @@ Install the required Python packages using pip:
 pip install -r requirements.txt
 ```
 
-### Step 3: Network Configuration
-
-Ensure that all devices (client and server) are connected to the same network or WiFi.
-
-### Step 4: Run the Server
+### Step 3: Run the Server
 
 On the device you want to use as the server, run the following command:
 and there is no need for other files in this device
@@ -41,6 +37,12 @@ and there is no need for other files in this device
 ```bash
 python server.py
 ```
+
+### Step 4: Network Configuration
+
+Ensure that all devices (client and server) are connected to the same network or WiFi.
+Replace Host address in client.py with the ipv4 address of the server  
+ipv4 address of a device can be found using ipconfig command
 
 ### Step 5: Run the Client
 
