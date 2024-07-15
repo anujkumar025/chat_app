@@ -8,7 +8,7 @@ import os
 from Crypto.Cipher import AES
 
 
-HOST = '127.0.0.1'
+HOST = '0.0.0.0'
 PORT = 8081
 LISTENER_LIMIT = 5
 active_clients = [] # list of all currently connected users

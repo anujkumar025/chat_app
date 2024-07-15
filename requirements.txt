@@ -1,0 +1,4 @@
+pickle
+cryptography
+customtkinter
+socket
